@@ -409,7 +409,8 @@ Aparentemente, el modelo 1 falla (línea azul del plot anterior) pero el modelo 
 
 ```{r}
 # Sí, el modelo 2 confirma que sí.
-# a parte, viendo las medias por separado:
+# a parte, viendo las medias por separado, observamos que a cuanto menos comen, 
+# más tiempo viven.:
 
 print(paste("Media lifespan eighty", media_life_eighty))
 print(paste("Media lifespan ninety", media_life_ninety))
