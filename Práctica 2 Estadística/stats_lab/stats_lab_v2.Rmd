@@ -1,0 +1,422 @@
+---
+title: "Práctica 2: Estadística"
+author: Giulio Francesco Tizzano, Alejando Rodríguez Ferrer y Adolfo Blanco Araujo.
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Objetivos de la práctica
+Esta práctica tiene como principales objetivo aprender a usar `R` para realizar
+los análisis estadísticos más habituales involucrando contrastes de hipótesis
+o intervalos de confianza.
+
+Recuerda escribir las **conclusiones** claramente, de forma 
+que cualquier persona te pueda entender.
+
+
+# Entrega y evaluación 
+El deadline para la entrega de la práctica es el día especificado en la entrega
+del curso virtual. Cualquier trabajo recibido **fuera del plazo contará como no entregado**.
+
+La entrega consistirá, **obligatoriamente, en el fichero de R Markdown con 
+extensión `*.Rmd`  y el resultado de compilarlo (un HTML). ** Ambos ficheros
+deberán entregarse a través del curso virtual.
+
+Las prácticas que no compilen el fichero .Rmd, generando un fichero HTML válido,
+**NO SERÁN EVALUADAS**.
+
+--- 
+
+# Infusión para perder peso
+Un anuncio en la televisión afirma que sin cambiar los hábitos alimenticios
+y tan solo tomando un extracto de hierbas diariamente se pueden perder 4 Kg (¡o más!)
+en 5 días.
+
+Picado por la curiosidad (y un tanto excéptico), decides probar esta afirmación
+sometiendo a 12 de tus compañeros a un experimento. Para realizar el experimento, 
+pesas a cada uno de tus compañeros, les pides que usen el extracto de hierbas 
+durante 5 días y luego los vuelves a pesar. Los datos se han guardado en 
+"weights.csv".
+
+### 1) Carga y prepara los datos...
+Lee los CSVs y júntalos en un único data.frame usando `merge`. A partir de esto, 
+obten dos vectores: `before` y `after` que contengan las
+medidas de peso para cada sujeto antes y después de tomar las infusiones. (Por 
+ejemplo: `before=c(peso_antes_sujeto_1, peso_antes_sujeto_2, ...)` y
+`after=c(peso_desp_sujeto_1, peso_desp_sujeto_2, ...)`). 
+
+```{r}
+# Paso 1: Importar los datos:
+# Datos de peso antes del experimento.
+library(readr)
+weights_before <- read_csv("/Users/giuliotizzano/Desktop/Universidad/2 año/Primer Semestre/Estadística/Práctica 2 Estadística/stats_lab/data/weights_before.csv")
+# View(weights_before)
+# Datos de peso después del experimento:
+
+library(readr)
+weights_after <- read_csv("/Users/giuliotizzano/Desktop/Universidad/2 año/Primer Semestre/Estadística/Práctica 2 Estadística/stats_lab/data/weights_after.csv")
+# View(weights_after)
+
+merged_data_frame = merge(weights_before, weights_after, by = "subject")
+
+before = merged_data_frame$weight.x
+after = merged_data_frame$weight.y
+
+```
+
+
+### 2) ¿Qué conclusiones puedes extraer al 0.01 de significación?, ¿miente el anuncio?
+Recuerda que debes... 
+
+1. Escribir claramente cuál es la hipótesis alternativa.
+Después de 5 días se supone que:
+H0: mu_weight_after - mu-weight_before != 0
+
+En cambio, yo quiero probar que:
+Ha: mu_weight_after - mu_weight_before = 0
+
+
+2. Validar las asunciones del modelo o discutirlas.
+Se puede asumir independencia de los datos
+
+3. Escribir las conclusiones de forma clara.
+
+**La hipótesis alternativa, aquí:**
+
+```{r}
+# Se puede asumir normalidad por la forma acampanada que tienen los datos.
+Diferencia = after - before
+hist(Diferencia)
+
+# Se puede asumir independencia porque el tamaño de la muestra es << comparada con la 
+# cantidad de gente que compra/consume el producto.
+
+
+t_test = t.test(before, after, alternative = "two.sided", paired = TRUE, conf.level = 0.99)
+
+p_valor = t_test$p.value
+print(p_valor)
+```
+
+**Tus conclusiones, aquí:**
+Al tener un p-valor muy cercano a 0.01, no tenemos suficiente evidencia como para descartar la veracidad del anuncio del producto, porque no podemos rechazar la hipotésis nula. Se recomienda realizar el experimento con un mayor número de muestras para poder llegar a una conclusión más sólida o directamente recurrir a simulaciones para llegar a una respuesta.
+--- 
+
+# Viagra y libido (Field, 2012)
+La viagra es un estimulante sexual que se usa para tratar la impotencia. En la 
+literatura de psicología, los problemas de rendimiento sexual se han relacionado
+con una pérdida de libido (Hawton, 1989). Supongamos que se comprueba esta hipótesis
+usando cuatro grupos de participantes. A un grupo se le administra un placebo 
+(una pastilla de azúcar con la misma forma y color que la viagra), mientras que 
+a los otros tres grupos se les administra una dosis baja, una dosis media, y una 
+dosis alta, respectivamente. La variable dependiente fue una medida objetiva de 
+la libido medida en el transcurso de una semana. Estamos interesados en saber 
+si la toma de viagra puede influir en la libido. Datos en "viagra.csv".
+
+### 1) Carga y visualiza los datos...
+```{r}
+# Cargamos los datos:
+
+library(readr)
+viagra <- read_csv("/Users/giuliotizzano/Desktop/Universidad/2 año/Primer Semestre/Estadística/Práctica 2 Estadística/stats_lab/data/viagra.csv")
+View(viagra)
+
+viagra$dose = factor(viagra$dose)
+viagra_libido = viagra$libido
+viagra_dosis = viagra$dose
+```
+
+### 2) Codifica los contrastes...
+... para responder a las siguientes preguntas:
+
+* ¿Existe alguna diferencia en los niveles de libido para los pacientes que reciben el placebo y los pacientes que reciben tratamientos reales?
+* ¿Existe alguna diferencia entre los pacientes que reciben dosis altas de viagra
+  frente a los que reciben dosis bajas o medias?
+* ¿Existe alguna diferencia entre los pacientes que reciben dosis altas y aquellos 
+que reciben dosis medias?
+
+H0: mu_placebo - 1/3 * (mu_low + mu_medium + mu_high)
+
+H0: mu_high - (mu_low + mu_medium) * 1/2
+
+H0: mu_high - mu_medium
+
+
+
+```{r}
+# LMH = Low, Medium, High:
+contrasts(viagra$dose)
+
+my_contrasts = rbind(
+  "P - (LMH)" = c(-0.33, -0.33, -0.33, 1),
+  "H - LM" = c(1, -0.5,-0.5, 0),
+  "H - M" = c(1, 0, -1, 0)
+)
+
+
+get_contrasts_coding <- function(my_contrasts) {
+  if ((nrow(my_contrasts) != (ncol(my_contrasts) - 1))) {
+    stop("Invalid dimensions for my_contrasts. For n levels of a factor should be (n - 1) x n")
+  }
+
+  my_contrasts <- rbind("constant" = 1 / ncol(my_contrasts), my_contrasts)
+  solve(my_contrasts)[, -1]
+}
+my_coding = get_contrasts_coding(my_contrasts)
+
+contrasts(viagra_dosis) = my_coding
+contrasts(viagra_dosis)
+v_model = lm(viagra_libido ~ viagra_dosis, viagra)
+summary(v_model)
+confint(v_model)
+
+```
+
+¿Existe alguna diferencia en los niveles de libido para los pacientes que reciben el placebo y los pacientes que reciben tratamientos reales?
+
+En mínimo de los casos, con una confianza del 95% podemos observar que se tienen -3.19 unidades de líbido con respecto a los que lo han consumido de media. Por otro lado, en el caso máximo se observa una diferencia de -0.659 unidades de líbido.
+---------------------------------------------------------------------------
+
+¿Existe alguna diferencia entre los pacientes que reciben dosis altas de viagra frente a los que reciben dosis bajas o medias?
+
+Hay una diferencia mínima de 0.55 y máxima 3.24 manteniendo el mismo nivel de confianza de antes
+
+
+---------------------------------------------------------------------------
+
+¿Existe alguna diferencia entre los pacientes que reciben dosis altas y aquellos que reciben dosis medias?
+
+En el caso mínimo 0.04 y máximo 3.15 con una confianza del 95%.
+
+
+
+
+### 3) Crea el modelo de regresión y ANOVA ... 
+... Antes de interpretar los resultados, comprueba si se cumplen las asunciones
+de ambos modelos.
+
+```{r}
+library("easystats")
+library("tidyverse")
+library("readr")
+
+viagra_model = lm(viagra_libido ~ viagra_dosis, viagra)
+print(summary(viagra_model))
+
+viagra_preds = bind_cols(viagra, fit = predict(viagra_model))
+
+ggplot(viagra_preds, aes(x = viagra_dosis, fill = viagra_dosis)) + geom_boxplot(aes(y = viagra_libido)) + geom_point(aes(y = fit), shape = 4, size = 3)
+```
+
+### 4) Comprueba si el test ANOVA es significativo e interpreta los contrastes...
+(Ten en cuenta que solo es necesario comprobar los contrastes si el resultado
+del test ANOVA es significativo.)
+
+```{r}
+library('car')
+V_model_ANOVA = Anova(v_model, type = 3)
+# summary(V_model_ANOVA)
+V_model_ANOVA
+
+```
+Cómo obtenemos un p-valor << en el (intercept) realizamos la comprobación de los contrastes ya que es bastante significativo (p-valor = 2.032e^-10). Esto sugiere que al menos una de las dos variables predictoras tiene un efecto significativo sobre la variable de respuesta 'viagra_libido'.
+
+### 5) Realiza un análisis Post-hoc...
+A pesar de que los contrastes son bastante informativos, tu jefe te pide que compares
+todas los grupos entre sí para comprender mejor los datos. Usa tanto Bonferroni
+como FDR e interpreta los resultados.
+
+
+El test posthoc es necesario cuando un test de Anova nos halla un resultado significativo, porque el test Anova nos indica nada más que existe una diferencia signficativa entre algunos de los 'grupos' que se están comparando, pero no identifica cuales de estos 'grupos' son diferentes entre sí.
+```{r}
+# Test posthoc para FDR y Bonferroni:
+
+# Bonferroni: se dice que es conservador porque puede resultar en la disminución de la potencia de un test (porque aumenta el riesgo de realizar errores de tipo II (falsos negativos)).
+pairwise.t.test(viagra_libido, viagra_dosis, p.adjust.method = "bonferroni")
+# FDR: el test FDR controla el número total de errores de tipo I(falsos positivos)
+# cometidos.
+pairwise.t.test(viagra_libido, viagra_dosis, p.adjust.method = "fdr")
+```
+
+**Tus conclusiones, aquí**:
+Según el test posthoc usando bonferroni, existe una diferencia signficativa entre Low Dose y Placebo (porque el p-valor es pequeño comparado con el nivel de signficación).
+
+Según el test posthoc que utiliza el método FDR nos sale que solamente Placebo vs. High dose y Low Dose vs. high Dose son significativos.
+
+
+
+
+---
+
+Respecto a los ajustes de Bonferroni y FDR, debes interiorizar que...
+(fíjate, por ejemplo, en High `Vs medium`):
+
+* Bonferroni es muy conservador en el ajuste de p-valores, mientras que FDR
+hace una corrección más pequeña (los p-valores se quedan más cercanos al 
+contraste original)
+* ¿Cuál es procedimiento que debemos usar? No hay ningún método mejor o peor. Gran 
+parte del problema es que parece que los métodos se contradicen porque estamos cayendo
+en la trampa de transformar el p-valor en una decisión "dura" (se rechaza Vs no se rechaza).
+Lo mejor en este caso es refugiarse en los intervalos de confianza. La única diferencia
+entre ambos ajustes será la anchura de los intervalos, pero la interpretación 
+será muy similar.
+
+--- 
+
+
+# Restricción calórica y esperanza de vida 
+En ciertas especies de animales existe evidencia de que la restricción calórica (comer 
+menos calorías de las que normalmente necesitarían) puede alargar la esperanza de vida.
+Un equipo de biólogos quiere validar si esto es cierto para una especie de arañas. 
+Para ello, se asignó aleatoriamente arañas recién nacidas a una de tres dietas:
+
+  * Acceso ilimitado a los alimentos,
+  * 90\% de la cantidad de comida que normalmente comería una araña de ese tamaño, o 
+  * 80\% de la cantidad de comida que comería normalmente una araña de ese tamaño.
+
+Se mantuvo a las arañas con tres dietas durante toda su vida y se registró
+su esperanza de vida (en días). Dado que los biólogos sospechan que el tamaño de la araña 
+puede afectar a la esperanza de vida, también registraron su tamaño corporal. 
+Datos en `diets.csv`.
+
+### 1) Carga y visualiza los datos.
+
+```{r}
+# Importamos datos:
+
+library(readr)
+diets <- read_csv("stats_lab/data/diets.csv")
+#View(diets)
+vida = diets$life_span_days
+panza = diets$body_length_cm
+
+# diets$diet = factor(diets$diet)
+
+datos_filtrados_eighty <- subset(diets, diet == "80_diet")
+datos_filtrados_eighty
+media_body_eigthy = mean(datos_filtrados_eighty$body_length_cm)
+
+datos_filtrados_ninety <- subset(diets, diet == "90_diet")
+media_body_ninety = mean(datos_filtrados_ninety$body_length_cm)
+
+datos_filtrados_unl = subset(diets, diet == "unlimited")
+media_body_unlimited = mean(datos_filtrados_unl$body_length_cm)
+
+media_life_eighty = mean(datos_filtrados_eighty$life_span_days)
+media_life_ninety = mean(datos_filtrados_ninety$life_span_days)
+media_life_unlimited = mean(datos_filtrados_unl$life_span_days)
+```
+
+### 2) Elige contrastes ortogonales... 
+...que sean razonables y justifica tu elección.
+
+```{r}
+# Las arañas que comen y viven sin límite en promedio, cuanto se diferencian de las que comen   limitado
+
+# H0: mu_ilimitada - 0.5 * (mu_eighty + mu_ninety)
+
+# Diferencia entre arañas que comen 80 y 90
+  
+# H0: (mu_ninety - mu_eighty)
+
+contrasts(diets$diet)
+
+my_contrasts = rbind(
+  "unl - (80_90)" = c(-0.5, -0.5, 1),
+  "80 - 90" = c(1, -1, 0)
+)
+
+```
+
+
+**Tu justificación, aquí**:
+
+### 3) Crea un modelo...
+... para estudiar si existe evidencia de que la dieta afectó a la duración 
+de la vida en este estudio. Recuerda tener en cuenta que el tamaño de la araña 
+puede afectar a su esperanza de vida. 
+
+```{r}
+
+get_contrasts_coding <- function(my_contrasts) {
+  if ((nrow(my_contrasts) != (ncol(my_contrasts) - 1))) {
+    stop("Invalid dimensions for my_contrasts. For n levels of a factor should be (n - 1) x n")
+  }
+
+  my_contrasts <- rbind("constant" = 1 / ncol(my_contrasts), my_contrasts)
+  solve(my_contrasts)[, -1]
+}
+my_coding = get_contrasts_coding(my_contrasts)
+
+contrasts(diets$diet) = my_coding
+contrasts(diets$diet)
+v_model1 = lm(diets$body_length_cm ~ diets$diet, diets)
+summary(v_model1)
+confint(v_model1)
+
+v_model2 = lm(diets$life_span_days ~ diets$diet, diets)
+summary(v_model2)
+confint(v_model2)
+
+```
+
+
+### 4) Comprueba si el modelo es válido o no.
+Para evaluar si el modelo es válido...
+
+  * Dibuja las predicciones del modelo Vs. los datos originales. 
+  * Realiza cualquier otro análisis que creas necesario.
+
+```{r}
+
+library(ggplot2)
+
+predicciones <- predict(v_model1)
+predicciones2 <- predict(v_model2)
+
+ggplot(diets, aes(x = diets$body_length_cm, y = diets$life_span_days, color = diets$diet)) +
+  geom_point() +
+  geom_line(aes(y = predicciones), color = "blue") +
+  geom_line(aes(y = predicciones2), color = "red")
+  labs(title = "Predicciones del modelo vs. Datos originales",
+       x = "body_length",
+       y = "lifespan",
+       color = "diet")
+
+
+
+
+
+
+```
+
+En base a lo anterior, responde claramente, ¿es el modelo válido?
+
+**Tu justificación, aquí**:
+Aparentemente, el modelo 1 falla (línea azul del plot anterior) pero el modelo 2 es aceptable (línea roja).
+
+### 5) Interpreta los resultados ... 
+... contestando claramente a las siguientes preguntas:
+
+* ¿Existe evidencia de que la dieta afectó a la duración de la vida en este estudio? 
+* En caso de que existan diferencias, ¿qué dietas alargan más la vida? 
+
+```{r}
+# Sí, el modelo 2 confirma que sí.
+# a parte, viendo las medias por separado:
+
+print(paste("Media lifespan eighty", media_life_eighty))
+print(paste("Media lifespan ninety", media_life_ninety))
+print(paste("Media lifespan unlimited", media_life_unlimited))
+
+```
+
+**Tus conclusiones, aquí**:
+El modelo 2: nos dice que la alimentación sí influye en el tiempo de vida de una araña. En cambio, el modelo 1 nos muestra de que no hay evidencias de que haya relación entre la dieta y el tamaño del cuerpo.
+
